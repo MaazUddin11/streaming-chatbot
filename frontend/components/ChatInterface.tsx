@@ -5,7 +5,8 @@ import { Message, TokenUsage } from "@/types/chat";
 import { streamChat, fetchHistory } from "@/lib/api";
 import TokenProgress from "./TokenProgress";
 import MessageList from "./MessageList";
-import MessageInput from "./MessageInput";
+import MessageInput, { SendMessagePayload } from "./MessageInput";
+import { parseMessageContent } from "@/lib/fileExtractor";
 
 const RESET_INTERVAL_SECONDS = 30;
 
@@ -30,7 +31,21 @@ export default function ChatInterface() {
   useEffect(() => {
     fetchHistory("default")
       .then((data) => {
-        setMessages(data.messages);
+        // Parse messages to extract file attachments and display content
+        const parsedMessages: Message[] = data.messages.map((msg) => {
+          if (msg.role === "user") {
+            const parsed = parseMessageContent(msg.content);
+            return {
+              role: msg.role,
+              content: parsed.displayContent,
+              attachment: parsed.filename
+                ? { filename: parsed.filename, type: parsed.fileType! }
+                : undefined,
+            };
+          }
+          return msg;
+        });
+        setMessages(parsedMessages);
         setTokenUsage(data.token_usage);
         initialLimitRef.current = data.token_usage.limit;
       })
@@ -62,7 +77,7 @@ export default function ChatInterface() {
 
   const isAtLimit = tokenUsage.limit > 0 && tokenUsage.current >= tokenUsage.limit;
 
-  async function handleSend(userMessage: string) {
+  async function handleSend(payload: SendMessagePayload) {
     if (isAtLimit) {
       setError(`Token limit reached (${tokenUsage.limit}). Please wait for reset.`);
       return;
@@ -70,16 +85,20 @@ export default function ChatInterface() {
 
     setError(null);
 
-    // Estimate token cost of user message and update immediately
-    const estimatedTokens = estimateTokens(userMessage);
+    // Estimate token cost of API message and update immediately
+    const estimatedTokens = estimateTokens(payload.apiContent);
     setTokenUsage((prev) => ({
       current: prev.current + estimatedTokens,
       limit: prev.limit,
       percentage: prev.limit > 0 ? ((prev.current + estimatedTokens) / prev.limit) * 100 : 0,
     }));
 
-    // Add user message immediately
-    const userMsg: Message = { role: "user", content: userMessage };
+    // Add user message immediately (display content for UI, with attachment info)
+    const userMsg: Message = {
+      role: "user",
+      content: payload.displayContent,
+      attachment: payload.attachment,
+    };
     setMessages((prev) => [...prev, userMsg]);
 
     // Add empty assistant message that will fill via streaming
@@ -87,7 +106,8 @@ export default function ChatInterface() {
     setIsStreaming(true);
 
     try {
-      await streamChat(userMessage, "default", (event) => {
+      // Send full API content to backend
+      await streamChat(payload.apiContent, "default", (event) => {
         switch (event.type) {
           case "token_count":
             setTokenUsage({

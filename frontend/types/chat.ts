@@ -1,6 +1,12 @@
+export interface FileAttachment {
+  filename: string;
+  type: "text" | "pdf";
+}
+
 export interface Message {
   role: "user" | "assistant";
   content: string;
+  attachment?: FileAttachment;
 }
 
 export interface TokenUsage {
