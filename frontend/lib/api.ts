@@ -1,6 +1,8 @@
 import { SSEEvent, HistoryResponse } from "@/types/chat";
 
 const API_BASE = "/api";
+// Bypass Next.js proxy for streaming - it buffers SSE responses
+const STREAM_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
 /**
  * Send a chat message and stream the response via SSE.
@@ -13,7 +15,7 @@ export async function streamChat(
   conversationId: string = "default",
   onEvent: (event: SSEEvent) => void
 ): Promise<void> {
-  const response = await fetch(`${API_BASE}/chat`, {
+  const response = await fetch(`${STREAM_BASE}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message, conversation_id: conversationId }),

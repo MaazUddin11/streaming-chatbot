@@ -98,7 +98,15 @@ async def chat(request: ChatRequest):
         )
         yield f"data: {json.dumps({'type': 'done', 'token_count': final_token_count})}\n\n"
 
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
 
 
 @app.get("/history/{conversation_id}")
