@@ -1,8 +1,6 @@
 import { SSEEvent, HistoryResponse } from "@/types/chat";
 
-const API_BASE = "/api";
-// Bypass Next.js proxy for streaming - it buffers SSE responses
-const STREAM_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
 /**
  * Send a chat message and stream the response via SSE.
@@ -15,7 +13,7 @@ export async function streamChat(
   conversationId: string = "default",
   onEvent: (event: SSEEvent) => void
 ): Promise<void> {
-  const response = await fetch(`${STREAM_BASE}/chat`, {
+  const response = await fetch(`${BACKEND_URL}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message, conversation_id: conversationId }),
@@ -61,7 +59,7 @@ export async function streamChat(
 export async function fetchHistory(
   conversationId: string = "default"
 ): Promise<HistoryResponse> {
-  const response = await fetch(`${API_BASE}/history/${conversationId}`);
+  const response = await fetch(`${BACKEND_URL}/history/${conversationId}`);
   if (!response.ok) {
     throw new Error(`History request failed: ${response.status}`);
   }
