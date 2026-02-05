@@ -1,9 +1,3 @@
-import * as pdfjsLib from "pdfjs-dist";
-
-// Use unpkg CDN for the worker - must match installed pdfjs-dist version
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  "https://unpkg.com/pdfjs-dist@5.4.624/build/pdf.worker.min.mjs";
-
 const SUPPORTED_TEXT_EXTENSIONS = [".txt", ".md", ".json", ".csv", ".xml", ".html", ".css", ".js", ".ts"];
 const MAX_FILE_SIZE_MB = 5;
 
@@ -68,8 +62,16 @@ async function extractTextFromTextFile(file: File): Promise<string> {
 
 /**
  * Extract text content from a PDF file using pdf.js.
+ * Dynamically imports pdf.js to avoid SSR issues (DOMMatrix not defined in Node.js).
  */
 async function extractTextFromPDF(file: File): Promise<string> {
+  // Dynamic import to avoid SSR issues - pdf.js uses browser APIs
+  const pdfjsLib = await import("pdfjs-dist");
+
+  // Set worker source (must match installed version)
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://unpkg.com/pdfjs-dist@5.4.624/build/pdf.worker.min.mjs";
+
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
