@@ -1,12 +1,13 @@
 from openai import AsyncOpenAI
-from typing import List, Dict, AsyncGenerator
+from typing import List, Dict, AsyncGenerator, Optional
 
 
 class ChatService:
     """Handles OpenAI API interactions for chat completion."""
 
-    def __init__(self, api_key: str, model_name: str = "gpt-5-nano"):
-        self.client = AsyncOpenAI(api_key=api_key)
+    def __init__(self, api_key: Optional[str], model_name: str = "gpt-5-nano"):
+        self.api_key = api_key
+        self.client = AsyncOpenAI(api_key=api_key) if api_key else None
         self.model_name = model_name
 
     async def stream_chat(
@@ -22,6 +23,10 @@ class ChatService:
         Yields:
             String chunks of the response
         """
+        if not self.client:
+            yield "Error: OpenAI API key not configured"
+            return
+
         try:
             stream = await self.client.chat.completions.create(
                 model=self.model_name,

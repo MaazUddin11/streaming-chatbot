@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -63,6 +63,13 @@ async def chat(request: ChatRequest):
     Stream chat responses from OpenAI API.
     Returns Server-Sent Events (SSE) stream.
     """
+    # Check if API key is configured
+    if not os.getenv("OPENAI_API_KEY"):
+        raise HTTPException(
+            status_code=503,
+            detail="OpenAI API key not configured. Please set OPENAI_API_KEY environment variable."
+        )
+
     # Get conversation history
     history = history_manager.get_history(request.conversation_id)
 

@@ -13,13 +13,31 @@ export async function streamChat(
   conversationId: string = "default",
   onEvent: (event: SSEEvent) => void
 ): Promise<void> {
-  const response = await fetch(`${BACKEND_URL}/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, conversation_id: conversationId }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${BACKEND_URL}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, conversation_id: conversationId }),
+    });
+  } catch (fetchError) {
+    // Network error - server unreachable or CORS blocked
+    throw new Error("Unable to connect to server. Make sure the backend is running.");
+  }
 
   if (!response.ok) {
+    // Try to parse error detail from backend
+    try {
+      const errorData = await response.json();
+      if (errorData.detail) {
+        throw new Error(errorData.detail);
+      }
+    } catch (parseError) {
+      // If parsing fails, use generic message
+      if (parseError instanceof Error && !parseError.message.includes("JSON")) {
+        throw parseError;
+      }
+    }
     throw new Error(`Chat request failed: ${response.status} - ${response.statusText}`);
   }
 
@@ -59,7 +77,12 @@ export async function streamChat(
 export async function fetchHistory(
   conversationId: string = "default"
 ): Promise<HistoryResponse> {
-  const response = await fetch(`${BACKEND_URL}/history/${conversationId}`);
+  let response: Response;
+  try {
+    response = await fetch(`${BACKEND_URL}/history/${conversationId}`);
+  } catch {
+    throw new Error("Unable to connect to server. Make sure the backend is running.");
+  }
   if (!response.ok) {
     throw new Error(`History request failed: ${response.status}`);
   }
