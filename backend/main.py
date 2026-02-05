@@ -4,6 +4,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List
 import os
+import json
 from dotenv import load_dotenv
 
 from chat_service import ChatService
@@ -76,7 +77,7 @@ async def chat(request: ChatRequest):
     # Stream the response
     async def generate():
         # First, send token usage info
-        yield f"data: {{'type': 'token_count', 'count': {token_count}, 'limit': {token_counter.token_limit}}}\n\n"
+        yield f"data: {json.dumps({'type': 'token_count', 'count': token_count, 'limit': token_counter.token_limit})}\n\n"
 
         full_response = ""
 
@@ -85,7 +86,7 @@ async def chat(request: ChatRequest):
             if chunk:
                 full_response += chunk
                 # Send each chunk as SSE
-                yield f"data: {{'type': 'content', 'content': {repr(chunk)}}}\n\n"
+                yield f"data: {json.dumps({'type': 'content', 'content': chunk})}\n\n"
 
         # Add assistant response to history
         assistant_message = {"role": "assistant", "content": full_response}
@@ -95,7 +96,7 @@ async def chat(request: ChatRequest):
         final_token_count = token_counter.count_messages_tokens(
             history_manager.get_history(request.conversation_id)
         )
-        yield f"data: {{'type': 'done', 'token_count': {final_token_count}}}\n\n"
+        yield f"data: {json.dumps({'type': 'done', 'token_count': final_token_count})}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 
